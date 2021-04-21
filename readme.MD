@@ -1,0 +1,1 @@
+This project is for the development of my own website using the Flask framework with Python
