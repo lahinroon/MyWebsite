@@ -1,16 +1,11 @@
-<html>
-<head>
-    <title> HOME PAGE</title>
-</head>
-<body>
-    <div>Logo Home Page</div>
+{% extends "base.html" %}
+{% block title %} Home Page {% endblock %}
+{% block content %}
+<div>Logo Home Page</div>
     <div class="menu">
         <div class="menu-item">About</div>
         <div class="menu-item">Contact</div>
     </div>
     <h1> Home Page</h1>
     <p>This is the home page.</p>
-</body>
-
-
-</html>
+{% endblock %}

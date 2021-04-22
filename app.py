@@ -14,6 +14,10 @@ def about():
 def contact():
     return render_template("contact.html")
 
+@app.route("/blog")
+def blog():
+    return render_template("blog.html")
+
 @app.route("/admin")
 def admin():
     return redirect(url_for("home"))
