@@ -7,7 +7,7 @@ body {
 }
 
 .background {
-  background-image: url(/static/12apostles.jpg);
+  background-image: url(/static/img/MelbourneBG.jpg);
   height: 100%;
   width: 100%;
   padding: 0;
@@ -20,6 +20,21 @@ body {
 
 .headline {
   color: white;
+  padding-bottom: 0em;
+  font-size: 2em;
+}
+
+.centered {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-width: 90rem;
+  padding-left: 2rem;
+  padding-right: 2rem;
+}
+
+.social {
+  padding-top: 0.5em;
 }
 
 .social li {
