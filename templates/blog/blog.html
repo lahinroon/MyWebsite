@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %} Blog Entries {% endblock %}
+
+{% block blognav %} 
+<div class="navbar-collapse collapse justify-content-start">
+  <ul class="navbar-nav mr-auto">
+    {% if session.logged_in %}
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('drafts') }}">Drafts</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('create') }}">Create Entry</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log out</a></li>
+    {% endif %}
+  </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+ {% for entry in object_list %}
+ <h3>
+  <a href="{% if entry.published %}{{ url_for('detail', slug=entry.slug) }}{% else %}{{ url_for('edit', slug=entry.slug) }}{% endif %}">
+    {{ entry.title }}
+  </a>
+ </h3>
+ <p>Created {{ entry.timestamp.strftime('%m/%d/%Y at %G:%I%p') }}</p>
+  {% else %}
+    <p>No entries have been created yet.</p>
+  {% endfor %}
+  <!--  include "/blog/includes/pagination.html" !-->
+{% endblock %}
