@@ -173,7 +173,7 @@ def logout():
         return redirect(url_for('login'))
     return render_template('/blog/logout.html')
 
-@app.route('/')
+@app.route("/blog")
 def index():
     search_query = request.args.get('q')
     if search_query:
@@ -186,10 +186,11 @@ def index():
     # the docs:
     # http://docs.peewee-orm.com/en/latest/peewee/playhouse.html#object_list
     return object_list(
-        'index.html',
+        '/blog/blog.html',
         query,
         search=search_query,
         check_bounds=False)
+
 
 def _create_or_edit(entry, template):
     if request.method == 'POST':
@@ -220,26 +221,26 @@ def _create_or_edit(entry, template):
 def create():
     return _create_or_edit(Entry(title='', content=''), '/blog/create.html')
 
-@app.route('/drafts/')
+@app.route('/blog/drafts/')
 @login_required
 def drafts():
     query = Entry.drafts().order_by(Entry.timestamp.desc())
-    return object_list('index.html', query, check_bounds=False)
+    return object_list('/blog/blog.html', query, check_bounds=False)
 
-@app.route('/<slug>/')
+@app.route('/blog/<slug>/')
 def detail(slug):
     if session.get('logged_in'):
         query = Entry.select()
     else:
         query = Entry.public()
     entry = get_object_or_404(query, Entry.slug == slug)
-    return render_template('detail.html', entry=entry)
+    return render_template('/blog/detail.html', entry=entry)
 
-@app.route('/<slug>/edit/', methods=['GET', 'POST'])
+@app.route('/blog/<slug>/edit/', methods=['GET', 'POST'])
 @login_required
 def edit(slug):
     entry = get_object_or_404(Entry, Entry.slug == slug)
-    return _create_or_edit(entry, 'edit.html')
+    return _create_or_edit(entry, '/blog/edit.html')
 
 @app.template_filter('clean_querystring')
 def clean_querystring(request_args, *keys_to_remove, **new_values):
@@ -272,7 +273,7 @@ def contact():
 
 @app.route("/blog")
 def blog():
-    return render_template("blog/blog.html")
+    return render_template("/blog/blog.html")
 
 @app.route("/admin")
 def admin():
