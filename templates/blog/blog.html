@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "blog-base.html" %}
 {% block title %} Blog Entries {% endblock %}
 
 {% block blognav %} 
@@ -12,6 +12,8 @@
   </ul>
 </div>
 {% endblock %}
+
+{% block content_title %}{% if search %}Search "{{ search }}"{% else %}Blog entries{% endif %}{% endblock %}
 
 {% block content %}
   {% for entry in object_list %}
