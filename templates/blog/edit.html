@@ -30,6 +30,7 @@
     <div class="form-group">
       <div class="col-sm-offset-2 col-sm-10">
         <button class="btn btn-primary" type="submit">Save</button>
+        <input class="btn btn-danger" name="deleted" value="Delete" type="submit"> {{ deleted }}
         <a class="btn btn-default" href="{{ url_for('blog') }}">Cancel</a>
       </div>
     </div>
