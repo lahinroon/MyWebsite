@@ -1,7 +1,7 @@
-import datetime
 import functools
 import os
 import urllib
+import re
 
 from flask import (Flask, flash, redirect, render_template, request,
                    Response, session, url_for)
@@ -10,13 +10,14 @@ from datetime import datetime
 from os import path
 from werkzeug.datastructures import ContentRange
 
+DB_NAME = "blog.db"
+
 # Create a Flask WSGI app and configure it using values from the module.
 app = Flask(__name__)
-app.config.from_object(__name__)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
 
 db = SQLAlchemy(app)
-DB_NAME = "blog.db"
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
 
 class Blogpost(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -24,6 +25,7 @@ class Blogpost(db.Model):
     date_posted = db.Column(db.DateTime)
     published = db.Column(db.Boolean)
     content = db.Column(db.Text)
+    slug = db.Column(db.String(50))
 
 """ def login_required(fn):
     @functools.wraps(fn)
@@ -58,7 +60,8 @@ def logout():
 
 @app.route("/blog")
 def index():
-    return render_template('/blog/blog.html')
+    posts = Blogpost.query.all()
+    return render_template('/blog/blog.html', posts=posts)
 
 @app.route('/blog/create/', methods=['GET', 'POST'])
 #@login_required
@@ -72,18 +75,23 @@ def addpost():
     published = request.form.get('published')
     if published == 'y':
         published = True
+    else:
+        published = False
 
-    post = Blogpost(title=title, content=content, published=published, date_posted=datetime.now())
+    slug = re.sub(r'[^\w]+', '-', title.lower()).strip('-')
+
+    post = Blogpost(title=title, content=content, published=published, 
+                    date_posted=datetime.now(), slug = slug)
     
     db.session.add(post)
     db.session.commit()
 
     return redirect(url_for('blog')) 
 
-@app.route('/blog/post/<int:post_id>')
+'''@app.route('/blog/post/<int:post_id>')
 def post(post_id):
     post = Blogpost.query.get(post_id)
-    return render_template('/blog/detail.html', post=post)
+    return render_template('/blog/detail.html', post=post)'''
 
 @app.route('/blog/drafts/')
 #@login_required
@@ -91,21 +99,35 @@ def drafts():
     query = Entry.drafts().order_by(Entry.timestamp.desc())
     return object_list('/blog/blog.html', query, check_bounds=False)
 
-'''@app.route('/blog/<slug>/')
+@app.route('/blog/<slug>/')
 def detail(slug):
-    if session.get('logged_in'):
-        query = Blogpost.select()
-    else:
-        query = Blogpost.public()
-    entry = get_object_or_404(query, Entry.slug == slug)
-    return render_template('/blog/detail.html', entry=entry)'''
+    post = Blogpost.query.filter_by(slug=slug).first_or_404()
+    date_posted = post.date_posted.strftime('%B %d, %Y')
+    return render_template('/blog/detail.html', post=post, date_posted=date_posted)
+
 
 @app.route('/blog/<slug>/edit/', methods=['GET', 'POST'])
 #@login_required
 def edit(slug):
-    entry = get_object_or_404(Entry, Entry.slug == slug)
-    return _create_or_edit(entry, '/blog/edit.html')
+    post = Blogpost.query.filter_by(slug=slug).first_or_404()
+    
+    if request.method == 'POST':
+        post.title = request.form.get('title')
+        post.content = request.form.get('content')
+        published = request.form.get('published')
+        slug = re.sub(r'[^\w]+', '-', post.title.lower()).strip('-')
+        post.slug = slug
+        
+        if published == 'y':
+            published = True
+        else:
+            published = False         
+        post.published = published
+   
+        db.session.commit()
 
+    return render_template('/blog/edit.html', post=post)
+'''
 @app.template_filter('clean_querystring')
 def clean_querystring(request_args, *keys_to_remove, **new_values):
     # We'll use this template filter in the pagination include. This filter
@@ -118,6 +140,7 @@ def clean_querystring(request_args, *keys_to_remove, **new_values):
         querystring.pop(key, None)
     querystring.update(new_values)
     return urllib.urlencode(querystring)
+    '''
 
 @app.errorhandler(404)
 def not_found(exc):
@@ -150,4 +173,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-    
