@@ -16,7 +16,7 @@
 {% block content %}
   {% for post in posts %}
     <h3>
-      <a href="{% if post.published %}{{ url_for('detail', slug=post.slug) }}{% else %}{{ url_for('edit', slug=post.slug) }}{% endif %}">
+      <a href="{% if post.published %}{{ url_for('detail', slug=post.slug) }}{% else %} {% if drafts %} {{ url_for('edit', slug=post.slug) }}{% endif %} {% endif %}">
         {{ post.title }}
       </a>
     </h3>
