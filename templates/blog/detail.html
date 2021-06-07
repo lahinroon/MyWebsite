@@ -1,23 +1,23 @@
 {% extends "blog-base.html" %}
 
-{% block title %}{{ entry.title }}{% endblock %}
+{% block title %}{{ post.title }}{% endblock %}
 
-{% block content_title %}{{ entry.title }}{% endblock %}
+{% block content_title %}{{ post.title }}{% endblock %}
 
 {% block blognav %} 
 <div class="navbar-collapse collapse justify-content-start">
   <ul class="navbar-nav mr-auto">
-    {% if session.logged_in %}
+    {% if current_user.is_authenticated %}
       <li class="nav-item"><a class="nav-link" href="{{ url_for('drafts') }}">Drafts</a></li>
       <li class="nav-item"><a class="nav-link" href="{{ url_for('create') }}">Create Entry</a></li>
-      <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log out</a></li>
-      <li class="nav-item"><a class="nav-link" href="{{ url_for('edit', slug=entry.slug) }}">Edit entry</a></li>
-    {% endif %}
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('blog') }}">Log out</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('edit', slug=post.slug) }}">Edit entry</a></li>
+    {% endif %}  
   </ul>
 </div>
 {% endblock %}
 
 {% block content %}
-  <p>Created {{ entry.timestamp.strftime('%m/%d/%Y at %I:%M%p') }}</p>
-  {{ entry.html_content }}
+  <p>Created {{ date_posted }}</p>
+  {{ post.content | safe}}
 {% endblock %}

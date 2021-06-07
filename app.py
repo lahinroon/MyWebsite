@@ -1,259 +1,192 @@
-import datetime
-import functools
 import os
 import re
-import urllib
 
-from flask import (Flask, flash, Markup, redirect, render_template, request,
-                   Response, session, url_for)
-from markdown import markdown
-from markdown.extensions.codehilite import CodeHiliteExtension
-from markdown.extensions.extra import ExtraExtension
-from micawber import bootstrap_basic, parse_html
-from micawber.cache import Cache as OEmbedCache
-from peewee import *
-from playhouse.flask_utils import FlaskDB, get_object_or_404, object_list
-from playhouse.sqlite_ext import *
+from flask import (Flask, flash, redirect, render_template, request,
+                   Response, url_for)
+from flask_login.mixins import UserMixin
+from flask_sqlalchemy import SQLAlchemy
+from flask_login import login_user, login_required, logout_user, LoginManager, current_user
+from datetime import datetime
+from os import error, path
+from werkzeug.datastructures import ContentRange
+from werkzeug.security import generate_password_hash, check_password_hash
 
+DB_NAME = "blog.db"
 
-# Blog configuration values.
-
-# You may consider using a one-way hash to generate the password, and then
-# use the hash again in the login view to perform the comparison. This is just
-# for simplicity.
-ADMIN_PASSWORD = 'secret'
-APP_DIR = os.path.dirname(os.path.realpath(__file__))
-
-# The playhouse.flask_utils.FlaskDB object accepts database URL configuration.
-DATABASE = 'sqliteext:///%s' % os.path.join(APP_DIR, 'blog.db')
-DEBUG = False
-
-# The secret key is used internally by Flask to encrypt session data stored
-# in cookies. Make this unique for your app.
-SECRET_KEY = 'shhh, secret!'
-
-# This is used by micawber, which will attempt to generate rich media
-# embedded objects with maxwidth=800.
-SITE_WIDTH = 800
-
-
-# Create a Flask WSGI app and configure it using values from the module.
+# Create a Flask WSGI app and set the SQLALCHEMY configurations
 app = Flask(__name__)
-app.config.from_object(__name__)
+app.config['SECRET_KEY'] = 'hjshjhdjah kjshkjdhjs'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
 
-# FlaskDB is a wrapper for a peewee database that sets up pre/post-request
-# hooks for managing database connections.
-flask_db = FlaskDB(app)
+# Instantiate the database
+db = SQLAlchemy(app)
 
-# The `database` is the actual peewee database, as opposed to flask_db which is
-# the wrapper.
-database = flask_db.database
+# Create LoginManager for to save user credentials
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.init_app(app)
 
-# Configure micawber with the default OEmbed providers (YouTube, Flickr, etc).
-# We'll use a simple in-memory cache so that multiple requests for the same
-# video don't require multiple network requests.
-oembed_providers = bootstrap_basic(OEmbedCache())
+# Create models for blogposts and users to store in the database
+class Blogpost(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(50))
+    date_posted = db.Column(db.DateTime)
+    published = db.Column(db.Boolean)
+    content = db.Column(db.Text)
+    slug = db.Column(db.String(50))
 
+class User(db.Model, UserMixin):
+    id = db.Column(db.Integer, primary_key = True)
+    username = db.Column(db.String(50))
+    password = db.Column(db.String(100))
 
-class Entry(flask_db.Model):
-    title = CharField()
-    slug = CharField(unique=True)
-    content = TextField()
-    published = BooleanField(index=True)
-    timestamp = DateTimeField(default=datetime.datetime.now, index=True)
+@app.route('/blog/signup/', methods=['GET', 'POST'])
+def signup():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        password2 = request.form.get('password2')
 
-    @property
-    def html_content(self):
-        """
-        Generate HTML representation of the markdown-formatted blog entry,
-        and also convert any media URLs into rich media objects such as video
-        players or images.
-        """
-        hilite = CodeHiliteExtension(linenums=False, css_class='highlight')
-        extras = ExtraExtension()
-        markdown_content = markdown(self.content, extensions=[hilite, extras])
-        oembed_content = parse_html(
-            markdown_content,
-            oembed_providers,
-            urlize_all=True,
-            maxwidth=app.config['SITE_WIDTH'])
-        return Markup(oembed_content)
-
-    def save(self, *args, **kwargs):
-        # Generate a URL-friendly representation of the entry's title.
-        if not self.slug:
-            self.slug = re.sub(r'[^\w]+', '-', self.title.lower()).strip('-')
-        ret = super(Entry, self).save(*args, **kwargs)
-
-        # Store search content.
-        self.update_search_index()
-        return ret
-
-    def update_search_index(self):
-        # Create a row in the FTSEntry table with the post content. This will
-        # allow us to use SQLite's awesome full-text search extension to
-        # search our entries.
-        exists = (FTSEntry
-                  .select(FTSEntry.docid)
-                  .where(FTSEntry.docid == self.id)
-                  .exists())
-        content = '\n'.join((self.title, self.content))
-        if exists:
-            (FTSEntry
-             .update({FTSEntry.content: content})
-             .where(FTSEntry.docid == self.id)
-             .execute())
+        user = User.query.filter_by(username=username).first()
+        
+        if user:
+            flash('NO', category='error')
+        elif password != password2:
+            flash('Passwords don\'t match', category='error')
+        elif len(password) < 7:
+            flash('Password must be at least 7 characters.', category='error')
         else:
-            FTSEntry.insert({
-                FTSEntry.docid: self.id,
-                FTSEntry.content: content}).execute()
+            new_user = User(username=username, 
+                            password=generate_password_hash(password, method='sha256'))
+    
+            db.session.add(new_user)
+            db.session.commit()
+            login_user(new_user, remember=False)
+            flash('Account created!', category='success')
 
-    @classmethod
-    def public(cls):
-        return Entry.select().where(Entry.published == True)
+            return redirect(url_for('login')) 
 
-    @classmethod
-    def drafts(cls):
-        return Entry.select().where(Entry.published == False)
-
-    @classmethod
-    def search(cls, query):
-        words = [word.strip() for word in query.split() if word.strip()]
-        if not words:
-            # Return an empty query.
-            return Entry.noop()
-        else:
-            search = ' '.join(words)
-
-        # Query the full-text search index for entries matching the given
-        # search query, then join the actual Entry data on the matching
-        # search result.
-        return (Entry
-                .select(Entry, FTSEntry.rank().alias('score'))
-                .join(FTSEntry, on=(Entry.id == FTSEntry.docid))
-                .where(
-                    FTSEntry.match(search) &
-                    (Entry.published == True))
-                .order_by(SQL('score')))
-
-class FTSEntry(FTSModel):
-    content = TextField()
-
-    class Meta:
-        database = database
-
-def login_required(fn):
-    @functools.wraps(fn)
-    def inner(*args, **kwargs):
-        if session.get('logged_in'):
-            return fn(*args, **kwargs)
-        return redirect(url_for('login', next=request.path))
-    return inner
+    return render_template('/blog/signup.html', user=current_user)
 
 @app.route('/blog/login/', methods=['GET', 'POST'])
 def login():
-    next_url = request.args.get('next') or request.form.get('next')
-    if request.method == 'POST' and request.form.get('password'):
+     
+    if current_user.is_authenticated:
+        flash('You are already logged in', category='error')
+        return redirect(url_for('blog'))
+
+    #next_url = request.args.get('next') or request.form.get('next')
+    if request.method == 'POST':
+        username = request.form.get('username')
         password = request.form.get('password')
-        # TODO: If using a one-way hash, you would also hash the user-submitted
-        # password and do the comparison on the hashed versions.
-        if password == app.config['ADMIN_PASSWORD']:
-            session['logged_in'] = True
-            session.permanent = True  # Use cookie to store session.
-            flash('You are now logged in.', 'success')
-            return redirect(next_url or url_for('blog'))
+
+        user = User.query.filter_by(username=username).first()
+
+        if user:
+            if user.id != 6:
+                flash('Cannot log into this account', category='error')
+                return redirect(url_for('blog'))
+
+            if check_password_hash(user.password, password):
+                flash('You are now logged in.', 'success')
+                login_user(user, remember=True)
+           
+                return redirect(url_for('blog'))
+            else:
+                flash('Incorrect password.', 'danger')
         else:
-            flash('Incorrect password.', 'danger')
-    return render_template('/blog/login.html', next_url=next_url)
+            flash('User does not exist', category='error')
+
+    return render_template('/blog/login.html', user=current_user)
+
 
 @app.route('/blog/logout/', methods=['GET', 'POST'])
+#@login_required
 def logout():
     if request.method == 'POST':
-        session.clear()
+        logout_user()
         return redirect(url_for('login'))
-    return render_template('/blog/logout.html')
+    return render_template('/blog/logout.html') 
 
 @app.route("/blog")
-def index():
-    search_query = request.args.get('q')
-    if search_query:
-        query = Entry.search(search_query)
-    else:
-        query = Entry.public().order_by(Entry.timestamp.desc())
-
-    # The `object_list` helper will take a base query and then handle
-    # paginating the results if there are more than 20. For more info see
-    # the docs:
-    # http://docs.peewee-orm.com/en/latest/peewee/playhouse.html#object_list
-    return object_list(
-        '/blog/blog.html',
-        query,
-        search=search_query,
-        check_bounds=False)
-
-
-def _create_or_edit(entry, template):
-    if request.method == 'POST':
-        entry.title = request.form.get('title') or ''
-        entry.content = request.form.get('content') or ''
-        entry.published = request.form.get('published') or False
-        if not (entry.title and entry.content):
-            flash('Title and Content are required.', 'danger')
-        else:
-            # Wrap the call to save in a transaction so we can roll it back
-            # cleanly in the event of an integrity error.
-            try:
-                with database.atomic():
-                    entry.save()
-            except IntegrityError:
-                flash('Error: this title is already in use.', 'danger')
-            else:
-                flash('Entry saved successfully.', 'success')
-                if entry.published:
-                    return redirect(url_for('detail', slug=entry.slug))
-                else:
-                    return redirect(url_for('edit', slug=entry.slug))
-
-    return render_template(template, entry=entry)
-
-@app.route('/blog/create/', methods=['GET', 'POST'])
-@login_required
-def create():
-    return _create_or_edit(Entry(title='', content=''), '/blog/create.html')
+def blog():
+    posts = Blogpost.query.all()
+    return render_template('/blog/blog.html', posts=posts, user=current_user) 
 
 @app.route('/blog/drafts/')
-@login_required
+#@login_required
 def drafts():
-    query = Entry.drafts().order_by(Entry.timestamp.desc())
-    return object_list('/blog/blog.html', query, check_bounds=False)
+    posts = Blogpost.query.filter_by(published = False).all()
+    return render_template('/blog/blog.html', posts=posts, drafts=True)
+
+@app.route('/blog/create/', methods=['GET', 'POST'])
+#@login_required
+def create():
+    return render_template('/blog/create.html')
+
+@app.route('/blog/addpost', methods=['POST'])
+def addpost():
+    title = request.form.get('title')
+    content = request.form.get('content')
+    published = request.form.get('published')
+    if published == 'y':
+        published = True
+    else:
+        published = False
+
+    slug = re.sub(r'[^\w]+', '-', title.lower()).strip('-')
+
+    post = Blogpost(title=title, content=content, published=published, 
+                    date_posted=datetime.now(), slug = slug)
+    
+    db.session.add(post)
+    db.session.commit()
+
+    return redirect(url_for('blog')) 
+
+@app.route('/blog/delete/<slug>/')
+def delete(slug):
+    post_to_delete = Blogpost.query.filter_by(slug=slug).first_or_404()
+
+    try:
+        db.session.delete(post_to_delete)
+        db.session.commit()
+        return redirect(url_for('blog'))
+    except:
+        'There was an error deleting this post'
+
+    return render_template('/blog/blog.html')
 
 @app.route('/blog/<slug>/')
 def detail(slug):
-    if session.get('logged_in'):
-        query = Entry.select()
-    else:
-        query = Entry.public()
-    entry = get_object_or_404(query, Entry.slug == slug)
-    return render_template('/blog/detail.html', entry=entry)
+    post = Blogpost.query.filter_by(slug=slug).first_or_404()
+    date_posted = post.date_posted.strftime('%B %d, %Y')
+    return render_template('/blog/detail.html', post=post, date_posted=date_posted)
+
 
 @app.route('/blog/<slug>/edit/', methods=['GET', 'POST'])
-@login_required
+#@login_required
 def edit(slug):
-    entry = get_object_or_404(Entry, Entry.slug == slug)
-    return _create_or_edit(entry, '/blog/edit.html')
+    post = Blogpost.query.filter_by(slug=slug).first_or_404()
+    
+    if request.method == 'POST':
 
-@app.template_filter('clean_querystring')
-def clean_querystring(request_args, *keys_to_remove, **new_values):
-    # We'll use this template filter in the pagination include. This filter
-    # will take the current URL and allow us to preserve the arguments in the
-    # querystring while replacing any that we need to overwrite. For instance
-    # if your URL is /?q=search+query&page=2 and we want to preserve the search
-    # term but make a link to page 3, this filter will allow us to do that.
-    querystring = dict((key, value) for key, value in request_args.items())
-    for key in keys_to_remove:
-        querystring.pop(key, None)
-    querystring.update(new_values)
-    return urllib.urlencode(querystring)
+        post.title = request.form.get('title')
+        post.content = request.form.get('content')
+        published = request.form.get('published')
+        slug = re.sub(r'[^\w]+', '-', post.title.lower()).strip('-')
+        post.slug = slug
+
+        if published == 'y':
+            published = True
+        else:
+            published = False
+        post.published = published
+
+        db.session.commit()
+
+    return render_template('/blog/edit.html', post=post)
 
 @app.errorhandler(404)
 def not_found(exc):
@@ -271,18 +204,18 @@ def about():
 def contact():
     return render_template("contact.html")
 
-@app.route("/blog")
-def blog():
-    return render_template("/blog/blog.html")
-
 @app.route("/admin")
 def admin():
     return redirect(url_for("home"))
 
 def main():
-    database.create_tables([Entry, FTSEntry], safe=True)
+    if not path.exists(DB_NAME):
+        db.create_all(app=app)
+
+    @login_manager.user_loader
+    def load_user(id):
+        return User.query.get(int(id))
     app.run(debug=True)
 
 if __name__ == '__main__':
     main()
-    

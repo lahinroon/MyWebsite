@@ -40,3 +40,7 @@ body {
 .social li {
   display: inline;
 }
+
+.form-group {
+  padding-bottom: 1em;
+}
