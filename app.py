@@ -1,11 +1,11 @@
-import functools
 import os
-import urllib
 import re
 
 from flask import (Flask, flash, redirect, render_template, request,
-                   Response, session, url_for)
+                   Response, url_for)
+from flask_login.mixins import UserMixin
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import login_user, login_required, logout_user, LoginManager, current_user
 from datetime import datetime
 from os import error, path
 from werkzeug.datastructures import ContentRange
@@ -13,13 +13,21 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_NAME = "blog.db"
 
-# Create a Flask WSGI app and configure it using values from the module.
+# Create a Flask WSGI app and set the SQLALCHEMY configurations
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'hjshjhdjah kjshkjdhjs'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
 
+# Instantiate the database
 db = SQLAlchemy(app)
 
+# Create LoginManager for to save user credentials
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.init_app(app)
+
+# Create models for blogposts and users to store in the database
 class Blogpost(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(50))
@@ -28,18 +36,10 @@ class Blogpost(db.Model):
     content = db.Column(db.Text)
     slug = db.Column(db.String(50))
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(50))
     password = db.Column(db.String(100))
-
-def login_required(fn):
-    @functools.wraps(fn)
-    def inner(*args, **kwargs):
-        if session.get('logged_in'):
-            return fn(*args, **kwargs)
-        return redirect(url_for('login', next=request.path))
-    return inner
 
 @app.route('/blog/signup/', methods=['GET', 'POST'])
 def signup():
@@ -48,8 +48,12 @@ def signup():
         password = request.form.get('password')
         password2 = request.form.get('password2')
 
-        if password != password2:
-            flash('Passwords don\'t match', category=error)
+        user = User.query.filter_by(username=username).first()
+        
+        if user:
+            flash('NO', category='error')
+        elif password != password2:
+            flash('Passwords don\'t match', category='error')
         elif len(password) < 7:
             flash('Password must be at least 7 characters.', category='error')
         else:
@@ -58,46 +62,57 @@ def signup():
     
             db.session.add(new_user)
             db.session.commit()
+            login_user(new_user, remember=False)
+            flash('Account created!', category='success')
 
             return redirect(url_for('login')) 
 
-    return render_template('/blog/signup.html')
+    return render_template('/blog/signup.html', user=current_user)
 
 @app.route('/blog/login/', methods=['GET', 'POST'])
 def login():
-    next_url = request.args.get('next') or request.form.get('next')
-    if request.method == 'POST' and request.form.get('password'):
+     
+    if current_user.is_authenticated:
+        flash('You are already logged in', category='error')
+        return redirect(url_for('blog'))
+
+    #next_url = request.args.get('next') or request.form.get('next')
+    if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
 
-        user = User.query.filter_by(username=username).first_or_404()
+        user = User.query.filter_by(username=username).first()
 
         if user:
+            if user.id != 6:
+                flash('Cannot log into this account', category='error')
+                return redirect(url_for('blog'))
+
             if check_password_hash(user.password, password):
-                session['logged_in'] = True
-                session.permanent = True  # Use cookie to store session.
                 flash('You are now logged in.', 'success')
+                login_user(user, remember=True)
            
                 return redirect(url_for('blog'))
             else:
                 flash('Incorrect password.', 'danger')
         else:
-            flash('User does not exist', category=error)
+            flash('User does not exist', category='error')
 
-    return render_template('/blog/login.html', next_url=next_url)
+    return render_template('/blog/login.html', user=current_user)
 
-"""
+
 @app.route('/blog/logout/', methods=['GET', 'POST'])
+#@login_required
 def logout():
     if request.method == 'POST':
-        session.clear()
+        logout_user()
         return redirect(url_for('login'))
-    return render_template('/blog/logout.html') """
+    return render_template('/blog/logout.html') 
 
 @app.route("/blog")
-def index():
+def blog():
     posts = Blogpost.query.all()
-    return render_template('/blog/blog.html', posts=posts) 
+    return render_template('/blog/blog.html', posts=posts, user=current_user) 
 
 @app.route('/blog/drafts/')
 #@login_required
@@ -143,11 +158,6 @@ def delete(slug):
 
     return render_template('/blog/blog.html')
 
-'''@app.route('/blog/post/<int:post_id>')
-def post(post_id):
-    post = Blogpost.query.get(post_id)
-    return render_template('/blog/detail.html', post=post)'''
-
 @app.route('/blog/<slug>/')
 def detail(slug):
     post = Blogpost.query.filter_by(slug=slug).first_or_404()
@@ -177,20 +187,6 @@ def edit(slug):
         db.session.commit()
 
     return render_template('/blog/edit.html', post=post)
-'''
-@app.template_filter('clean_querystring')
-def clean_querystring(request_args, *keys_to_remove, **new_values):
-    # We'll use this template filter in the pagination include. This filter
-    # will take the current URL and allow us to preserve the arguments in the
-    # querystring while replacing any that we need to overwrite. For instance
-    # if your URL is /?q=search+query&page=2 and we want to preserve the search
-    # term but make a link to page 3, this filter will allow us to do that.
-    querystring = dict((key, value) for key, value in request_args.items())
-    for key in keys_to_remove:
-        querystring.pop(key, None)
-    querystring.update(new_values)
-    return urllib.urlencode(querystring)
-    '''
 
 @app.errorhandler(404)
 def not_found(exc):
@@ -208,10 +204,6 @@ def about():
 def contact():
     return render_template("contact.html")
 
-@app.route("/blog")
-def blog():
-    return render_template("/blog/blog.html")
-
 @app.route("/admin")
 def admin():
     return redirect(url_for("home"))
@@ -219,6 +211,10 @@ def admin():
 def main():
     if not path.exists(DB_NAME):
         db.create_all(app=app)
+
+    @login_manager.user_loader
+    def load_user(id):
+        return User.query.get(int(id))
     app.run(debug=True)
 
 if __name__ == '__main__':
