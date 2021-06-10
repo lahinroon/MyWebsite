@@ -17,12 +17,22 @@
 
 {% block content %}
   {% for post in posts %}
-    <h3>
-      <a href="{% if post.published %}{{ url_for('detail', slug=post.slug) }}{% else %} {% if drafts %} {{ url_for('edit', slug=post.slug) }}{% endif %} {% endif %}">
-        {{ post.title }}
-      </a>
-    </h3>
-    <p>Created {{ post.date_posted.strftime('%B %d, %Y') }}</p>
+    {% if drafts %}
+      <h3>
+        <a href="{% if not post.published %} {{ url_for('edit', slug=post.slug) }}{% endif %}">
+          {{ post.title }}
+        </a>
+      </h3>
+      <p>Created {{ post.date_posted.strftime('%B %d, %Y') }}</p>  
+    {% else %}
+      <h3>
+        <a href="{% if post.published %}{{ url_for('detail', slug=post.slug) }} {% endif %}">
+          {{ post.title if post.published}}
+        </a>
+      </h3>
+      <p> {% if post.published %}Created {{ post.date_posted.strftime('%B %d, %Y') }} {% endif %}</p>
+    {% endif %}
+    
   {% else %}
     <p>No entries have been created yet.</p>
   {% endfor %}

@@ -154,7 +154,7 @@ def delete(slug):
         db.session.commit()
         return redirect(url_for('blog'))
     except:
-        'There was an error deleting this post'
+        flash('There was an error deleting this post', category='error')
 
     return render_template('/blog/blog.html')
 

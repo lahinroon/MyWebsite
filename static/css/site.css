@@ -18,6 +18,18 @@ body {
   background-size: cover;
 }
 
+.blog-background {
+  background-image: url(https://www.trainertower.com/wp-content/themes/trainertower-theme/resources/images/explorer.gif);
+  background-repeat: repeat;
+  width: 100%;
+  height: 100%;
+}
+
+.container-bg {
+  background-color: white;
+  height: 100%;
+}
+
 .headline {
   color: white;
   padding-bottom: 0em;
