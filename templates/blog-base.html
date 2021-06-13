@@ -9,9 +9,10 @@
     <link rel="stylesheet" href="/static/css/bootstrap.css">
     <link rel="stylesheet" href="/static/css/site.css">
     <link rel="stylesheet" href="/static/css/fa.css">
+    
 
     <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
     <title>{% block title %} {% endblock %}</title>
 
 </head>
@@ -37,7 +38,7 @@
                 <a class="nav-link" href="/blog">Blog</a>
               </li>
               <li class="nav-item">
-                <a class="nav-link" href="#">Journey</a>
+                <a class="nav-link" href="/about">About</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" href="#">Portfolio</a>
@@ -69,22 +70,24 @@
         {% endif %} 
       {% endwith %}
           
-  <main class=" blog-background container-fluid" role="main">
+<main class="page-background container-fluid" role="main">
       {% block background %} {% endblock %}
 
-    <div class="container container-bg">
+    <div class="card-container content-blog">
+      <div class="card">
         {% block page_header %}
-        <div class="page-header">
+        <div class="card-header bg-dark text-white">
           <h1>{% block content_title %}{% endblock %}</h1>
         </div>
         {% endblock %}
-
-      {% block content %} {% endblock %}
+        <div class="card-body">
+          {% block content %} {% endblock %}
+        </div>
+      </div>
     </div>
-  </main>
+</main>
 
-  <footer class="text-center fixed-bottom text-white bg-dark">
-    <div class="container"></div>
+  <div class="text-center fixed-bottom text-white bg-dark footer">
 
     <div class="row">
       <div class="col-md-12 text-center p-3">
@@ -94,39 +97,18 @@
       </div>  
     </div>
       
-  </footer>
-    
+  </div>
 
-    <!-- <footer class="container-fluid text-center align-content-center footer pb-2">
-      <div class="container pt-5">
-        <div class="row text-left">
-          <div class="col text-left">
-            <h5>Contact me</h5>
-            <li class="nav-item">
-              <a class="smooth-scroll" href="/">Home</a>
-            </li>
-            <li class="nav-item">
-              <a class="smooth-scroll" href="/about">About me</a>
-            </li>
-            <li class="nav-item">
-              <a class="smooth-scroll" href="/mylife">My Life</a>
-            </li>
-            <li class="nav-item"><a class="smooth-scroll" href="/myskills">My Skills</a>
-            </li>
-          </div>
-        </div>
-      </div>
-    </footer> -->
 
-    <!-- Boostrap Bundle with Popper-->
-    <script src="https://code.jquery.com/jquery-3.4.1.slim.min.js" integrity="sha384-J6qa4849blE2+poT4WnyKhv5vZF5SrPo0iEjwBvKU7imGFAV0wwj1yYfoRSJoZ+n" crossorigin="anonymous"></script>
-    <script src="/static/js/bootstrap.js"></script>
-    <script> 
-      $(document).ready(function() {
-        setTimeout(function() {
-          $('.alert').fadeOut('slow');
-        }, 2000);
-      }); //<-- time in milliseconds --> 
+ <!-- Boostrap Bundle with Popper-->
+  <script src="/static/js/bootstrap.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+  <script> 
+    $(document).ready(function() {
+      setTimeout(function() {
+        $('.alert').fadeOut('slow');
+      }, 2000);
+    }); //<-- time in milliseconds --> 
     </script>
 </body>
 </html>
