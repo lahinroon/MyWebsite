@@ -36,15 +36,41 @@
     </div>
   </form>
 
-  <script>
-   $(document).ready(function() {
+<script>
+$(document).ready(function() {
     $('#summernote').summernote({
+      placeholder: 'Write here',
+      tabsize: 2,
       height: 300,
       minHeight: null,
       maxHeight: null,
-      focus: true
+      callbacks: {
+        onImageUpload: function(image) {
+          uploadImage(image[0]);
+        }
+      }
     });
 });
-  </script>
+
+function uploadImage(image) {
+  var data = new FormData();
+  data.append("image", image);
+  $.ajax({
+      url: "/upload_image",
+      cache: false,
+      contentType: false,
+      processData: false,
+      data: data,
+      type: "POST",
+      success: function(filename) {
+          var image = $('<img>').attr('src', '/static/img/' + filename).addClass("img-fluid");
+          $('#summernote').summernote("insertNode", image[0]);
+      },
+      error: function(data) {
+          console.log(data);
+      }
+  });
+}
+</script>
   
 {% endblock %}

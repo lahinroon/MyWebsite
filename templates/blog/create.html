@@ -5,44 +5,71 @@
 {% block content_title %}Create entry{% endblock %}
 
 {% block content %}
-  <form action="{{ url_for('addpost') }}" class="form-horizontal" method="post">
-    <div class="form-group">
-      <label for="title" class="col-sm-2 control-label">Title</label>
-      <div class="col-sm-10">
-        <input class="form-control" id="title" name="title" type="text">
+<form action="{{ url_for('addpost') }}" class="form-horizontal" method="post">
+  <div class="form-group">
+    <label for="title" class="col-sm-2 control-label">Title</label>
+    <div class="col-sm-10">
+      <input class="form-control" id="title" name="title" type="text">
+    </div>
+  </div>
+  <div class="form-group">
+    <label for="Content" class="col-sm-2 control-label">Content</label>
+    <div class="col-sm-10">
+      <textarea class="form-control" id="summernote" name="content"></textarea>
+    </div>
+  </div>
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <div class="checkbox">
+        <label>
+          <input name="published" type="checkbox" value="y" checked="checked"> Published?
+        </label>
       </div>
     </div>
-    <div class="form-group">
-      <label for="Content" class="col-sm-2 control-label">Content</label>
-      <div class="col-sm-10">
-        <textarea class="form-control" id="summernote" name="content"></textarea>
-      </div>
+  </div>
+  <div class="form-group">
+    <div class="col-sm-offset-2 col-sm-10">
+      <button class="btn btn-primary" type="submit">Create</button>
+      <a class="btn btn-default" href="{{ url_for('blog') }}">Cancel</a>
     </div>
-    <div class="form-group">
-      <div class="col-sm-offset-2 col-sm-10">
-        <div class="checkbox">
-          <label>
-            <input name="published" type="checkbox" value="y" checked="checked"> Published?
-          </label>
-        </div>
-      </div>
-    </div>
-    <div class="form-group">
-      <div class="col-sm-offset-2 col-sm-10">
-        <button class="btn btn-primary" type="submit">Create</button>
-        <a class="btn btn-default" href="{{ url_for('blog') }}">Cancel</a>
-      </div>
-    </div>
-  </form>
+  </div>
+</form>
 
-  <script>
-   $(document).ready(function() {
+<script>
+$(document).ready(function() {
     $('#summernote').summernote({
+      placeholder: 'Write here',
+      tabsize: 2,
       height: 300,
       minHeight: null,
       maxHeight: null,
-      focus: true
+      callbacks: {
+        onImageUpload: function(image) {
+          uploadImage(image[0]);
+        }
+      }
     });
 });
-  </script>
+
+function uploadImage(image) {
+  var data = new FormData();
+  data.append("image", image);
+  $.ajax({
+      url: "/upload_image",
+      cache: false,
+      contentType: false,
+      processData: false,
+      data: data,
+      type: "POST",
+      success: function(filename) {
+          var image = $('<img>').attr('src', '/static/img/' + filename).addClass("img-fluid");
+          $('#summernote').summernote("insertNode", image[0]);
+      },
+      error: function(data) {
+          console.log(data);
+      }
+  });
+}
+</script>
 {% endblock %}
+

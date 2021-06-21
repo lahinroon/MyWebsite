@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 
 from flask import (Flask, flash, redirect, render_template, request,
                    Response, url_for)
@@ -8,16 +9,19 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import login_user, login_required, logout_user, LoginManager, current_user
 from datetime import datetime
 from os import error, path
+from werkzeug.utils import secure_filename
 from werkzeug.datastructures import ContentRange
 from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_NAME = "blog.db"
+UPLOAD_FOLDER = 'static/img/blog'
 
 # Create a Flask WSGI app and set the SQLALCHEMY configurations
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'hjshjhdjah kjshkjdhjs'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_NAME}'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # Instantiate the database
 db = SQLAlchemy(app)
@@ -40,6 +44,28 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key = True)
     username = db.Column(db.String(50))
     password = db.Column(db.String(100))
+
+
+ALLOWED_EXTENSIONS = set(["png", "jpg", "jpeg", "gif"])
+def allowed_file(filename):
+    return '.' in filename and \
+        filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@app.route("/upload_image", methods=['GET','POST'])
+def upload_image():
+    if request.method == "POST":
+        print(request.files)
+        file = request.files['image']
+        if file.filename == '':
+            flash('No selected file')
+            return redirect(url_for('create'))
+        if file and allowed_file(file.filename): 
+            if os.path.exists(app.config['UPLOAD_FOLDER'] + '/' + file.filename): # if image with same name exists
+                _dot = file.filename.find(".")
+                file.filename = file.filename[:_dot] + str(uuid.uuid4()) + file.filename[_dot:]
+            filename = secure_filename(file.filename)
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            return file.filename
 
 @app.route('/blog/signup/', methods=['GET', 'POST'])
 def signup():
@@ -187,6 +213,7 @@ def edit(slug):
         db.session.commit()
 
     return render_template('/blog/edit.html', post=post)
+
 
 @app.errorhandler(404)
 def not_found(exc):
