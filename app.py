@@ -88,7 +88,6 @@ def signup():
     
             db.session.add(new_user)
             db.session.commit()
-            login_user(new_user, remember=False)
             flash('Account created!', category='success')
 
             return redirect(url_for('login')) 
@@ -211,6 +210,7 @@ def edit(slug):
         post.published = published
 
         db.session.commit()
+        return render_template('/blog/detail.html',post=post)
 
     return render_template('/blog/edit.html', post=post)
 
