@@ -1,0 +1,23 @@
+{% extends "blog-base.html" %}
+
+{% block title %}{{ post.title }}{% endblock %}
+
+{% block content_title %}{{ post.title }}{% endblock %}
+
+{% block blognav %} 
+<div class="navbar-collapse collapse justify-content-start">
+  <ul class="navbar-nav mr-auto">
+    {% if current_user.is_authenticated %}
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.drafts') }}">Drafts</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.create') }}">Create Entry</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.edit', slug=post.slug) }}">Edit entry</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Log out</a></li>
+    {% endif %}  
+  </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+  <p style="font-size: medium;">Created {{ date_posted }}</p>
+  {{ post.content | safe}}
+{% endblock %}

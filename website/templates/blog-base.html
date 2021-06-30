@@ -1,0 +1,107 @@
+<!doctype html5>
+
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS-->
+    <link rel="stylesheet" href="/static/css/bootstrap.css">
+    <link rel="stylesheet" href="/static/css/site.css">
+    <link rel="stylesheet" href="/static/css/fa.css">
+    
+
+    <link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js" crossorigin="anonymous"></script>
+    <title>{% block title %} {% endblock %}</title>
+
+</head>
+
+<body>
+
+    <!-- Bootstrap Navigation Bar-->
+    
+
+      <nav class="navbar navbar-expand-lg navbar-dark fixed-top bg-dark">
+        <div class="container">
+          <a class="navbar-brand" href="/blog">Nihal</a>
+          {% block blognav %} {% endblock %}
+          <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+            </button>
+          <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+            <ul class="navbar-nav mr-auto">
+              <li class="nav-item">
+                <a class="nav-link active" aria-current="page" href="/">Home</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/blog">Blog</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/about">About</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="#">Portfolio</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    
+      {% with messages = get_flashed_messages(with_categories=true) %} 
+        {% if messages %} 
+          {% for category, message in messages %} 
+            {% if category == 'error' %}
+              <div class="alert alert-danger alter-dismissable fade show" role="alert">
+                {{ message }}
+                <button type="button" class="close" data-dismiss="alert">
+                  <span aria-hidden="true">&times;</span>
+                </button>
+              </div>
+            {% else %}
+            <div class="alert alert-success alter-dismissable fade show" role="alert">
+              {{ message }}
+              <button type="button" class="close" data-dismiss="alert">
+                <span aria-hidden="true">&times;</span>
+              </button>
+            </div>
+              {% endif %} 
+          {% endfor %} 
+        {% endif %} 
+      {% endwith %}
+          
+<main class="page-background container-fluid" role="main">
+      {% block background %} {% endblock %}
+
+    <div class="card-container content-blog">
+      <div class="card">
+        {% block page_header %}
+        <div class="card-header bg-dark text-white">
+          <h1>{% block content_title %}{% endblock %}</h1>
+        </div>
+        {% endblock %}
+        <div class="card-body">
+          {% block content %} {% endblock %}
+        </div>
+      </div>
+    </div>
+</main>
+
+  <div class="text-center fixed-bottom text-white bg-dark footer">
+
+    <div class="row">
+      <div class="col-md-12 text-center p-3">
+        © 2021 — Nihal Noor All Rights Reserved. Powered by 
+        <a href="https://flask.palletsprojects.com/en/2.0.x/" style="color: deeppink; text-decoration: none;" target="_blank">Flask</a> and 
+        <a href="https://getbootstrap.com/" style="color:deeppink; text-decoration: none;" target="_blank">Bootstrap</a>
+      </div>  
+    </div>
+      
+  </div>
+
+
+ <!-- Boostrap Bundle with Popper-->
+  <script src="/static/js/bootstrap.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+</body>
+</html>
