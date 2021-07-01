@@ -4,6 +4,18 @@
 
 {% block content_title %}Edit entry{% endblock %}
 
+{% block blognav %} 
+<div class="navbar-collapse collapse justify-content-start">
+  <ul class="navbar-nav mr-auto">
+    {% if current_user.is_authenticated %}
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.drafts') }}">Drafts</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.create') }}">Create Entry</a></li>
+      <li class="nav-item"><a class="nav-link" href="{{ url_for('auth.logout') }}">Log out</a></li>
+    {% endif %}  
+  </ul>
+</div>
+{% endblock %}
+
 {% block content %}
   <form action="{{ url_for('auth.edit', slug=post.slug) }}" class="form-horizontal" method="POST">
     <div class="form-group">
