@@ -2,3 +2,4 @@
 .vscode/*
 **/readme.md
 **/__pycache__
+blog.db
