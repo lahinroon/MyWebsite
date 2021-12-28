@@ -1,1 +1,1 @@
-This project is for the development of my own website using the Flask framework with Python
+A Proof of Concept application of building a personal website using the Flask Framework with Python, using SQLite3 for a blog database.
